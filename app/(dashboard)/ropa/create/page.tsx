@@ -13,10 +13,11 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, ArrowRight, Eye, Save } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
+import { dataGroups as masterDataGroups, getLocalizedName } from "@/lib/data-types"
 
 export default function CreateRopaPage() {
   const router = useRouter()
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [currentStep, setCurrentStep] = useState(1)
 
   const steps = [
@@ -75,17 +76,6 @@ export default function CreateRopaPage() {
     rejectionCases: "",
     objectionCases: "",
   })
-
-  const dataGroups = [
-    { id: "personal_info", name: t("ropa.dataGroups.personalInfo") || "Personal Information (Name, Address, etc.)" },
-    { id: "contact_info", name: t("ropa.dataGroups.contactInfo") || "Contact Information (Email, Phone)" },
-    { id: "financial_info", name: t("ropa.dataGroups.financialInfo") || "Financial Information (Account, Income)" },
-    { id: "health_info", name: t("ropa.dataGroups.healthInfo") || "Health Information" },
-    { id: "employment_info", name: t("ropa.dataGroups.employmentInfo") || "Employment Information" },
-    { id: "location_info", name: t("ropa.dataGroups.locationInfo") || "Location Information" },
-    { id: "online_activity", name: t("ropa.dataGroups.onlineActivity") || "Online Activity (IP address, cookies)" },
-    { id: "sensitive_data", name: t("ropa.dataGroups.sensitiveData") || "Sensitive Data (Race, Religion)" },
-  ]
 
   const mockAssets = [
     { id: "asset-001", name: "HR Database Server", type: "Database" },
@@ -216,7 +206,7 @@ export default function CreateRopaPage() {
             <div className="space-y-4">
               <Label>{t("ropa.dataCategories")} *</Label>
               <div className="grid grid-cols-2 gap-4">
-                {dataGroups.map((group) => (
+                {masterDataGroups.map((group) => (
                   <div key={group.id} className="flex items-center space-x-2">
                     <Checkbox
                       id={group.id}
@@ -233,7 +223,7 @@ export default function CreateRopaPage() {
                       }}
                     />
                     <Label htmlFor={group.id} className="text-sm">
-                      {group.name}
+                      {getLocalizedName(group, language === "en" ? "en" : "th")}
                     </Label>
                   </div>
                 ))}
