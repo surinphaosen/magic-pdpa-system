@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "@/components/auth-provider"
 import { useLanguage } from "@/components/language-provider"
+import { useOrganization } from "@/components/organization-provider"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
@@ -19,20 +20,11 @@ import { toast } from "sonner"
 export default function SettingsPage() {
   const { user } = useAuth()
   const { t } = useLanguage()
+  const { organizationData, updateOrganization } = useOrganization()
   const router = useRouter()
 
-  const [organizationData, setOrganizationData] = useState({
-    companyName: "ABC Company",
-    companyNameTh: "บริษัท เอบีซี จำกัด",
-    address: "123 Business District, Bangkok, Thailand",
-    phone: "+66 2 123 4567",
-    email: "contact@abccompany.co.th",
-    website: "https://www.abccompany.co.th",
-    taxId: "0123456789012",
-    dpoName: "Somchai Jaidee",
-    dpoEmail: "dpo@abccompany.co.th",
-    dpoPhone: "+66 2 123 4568",
-  })
+  // Local state for form data
+  const [formData, setFormData] = useState(organizationData)
 
   const [securitySettings, setSecuritySettings] = useState({
     passwordMinLength: 8,
@@ -65,19 +57,49 @@ export default function SettingsPage() {
     enableMaintenance: false,
   })
 
+  // Load settings from localStorage on mount
+  useEffect(() => {
+    const savedSecurity = localStorage.getItem("securitySettings")
+    const savedNotifications = localStorage.getItem("notificationSettings")
+    const savedSystem = localStorage.getItem("systemSettings")
+
+    if (savedSecurity) {
+      setSecuritySettings(JSON.parse(savedSecurity))
+    }
+    if (savedNotifications) {
+      setNotificationSettings(JSON.parse(savedNotifications))
+    }
+    if (savedSystem) {
+      setSystemSettings(JSON.parse(savedSystem))
+    }
+  }, [])
+
+  // Update form data when organization data changes
+  useEffect(() => {
+    setFormData(organizationData)
+  }, [organizationData])
+
   if (user?.role !== "Admin") {
     router.push("/dashboard")
     return null
   }
 
   const handleSave = () => {
-    // Save all settings
+    // Update organization data
+    updateOrganization(formData)
+
+    // Save other settings to localStorage
+    localStorage.setItem("securitySettings", JSON.stringify(securitySettings))
+    localStorage.setItem("notificationSettings", JSON.stringify(notificationSettings))
+    localStorage.setItem("systemSettings", JSON.stringify(systemSettings))
+
     console.log("Saving settings:", {
-      organization: organizationData,
+      organization: formData,
       security: securitySettings,
       notifications: notificationSettings,
       system: systemSettings,
     })
+
     toast.success("Settings saved successfully!")
   }
 
@@ -133,16 +155,16 @@ export default function SettingsPage() {
                   <Label htmlFor="companyName">Company Name (English)</Label>
                   <Input
                     id="companyName"
-                    value={organizationData.companyName}
-                    onChange={(e) => setOrganizationData({ ...organizationData, companyName: e.target.value })}
+                    value={formData.companyName}
+                    onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="companyNameTh">Company Name (Thai)</Label>
                   <Input
                     id="companyNameTh"
-                    value={organizationData.companyNameTh}
-                    onChange={(e) => setOrganizationData({ ...organizationData, companyNameTh: e.target.value })}
+                    value={formData.companyNameTh}
+                    onChange={(e) => setFormData({ ...formData, companyNameTh: e.target.value })}
                   />
                 </div>
               </div>
@@ -151,8 +173,8 @@ export default function SettingsPage() {
                 <Label htmlFor="address">Address</Label>
                 <Textarea
                   id="address"
-                  value={organizationData.address}
-                  onChange={(e) => setOrganizationData({ ...organizationData, address: e.target.value })}
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   rows={3}
                 />
               </div>
@@ -162,8 +184,8 @@ export default function SettingsPage() {
                   <Label htmlFor="phone">Phone</Label>
                   <Input
                     id="phone"
-                    value={organizationData.phone}
-                    onChange={(e) => setOrganizationData({ ...organizationData, phone: e.target.value })}
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -171,16 +193,16 @@ export default function SettingsPage() {
                   <Input
                     id="email"
                     type="email"
-                    value={organizationData.email}
-                    onChange={(e) => setOrganizationData({ ...organizationData, email: e.target.value })}
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="website">Website</Label>
                   <Input
                     id="website"
-                    value={organizationData.website}
-                    onChange={(e) => setOrganizationData({ ...organizationData, website: e.target.value })}
+                    value={formData.website}
+                    onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                   />
                 </div>
               </div>
@@ -189,8 +211,8 @@ export default function SettingsPage() {
                 <Label htmlFor="taxId">Tax ID</Label>
                 <Input
                   id="taxId"
-                  value={organizationData.taxId}
-                  onChange={(e) => setOrganizationData({ ...organizationData, taxId: e.target.value })}
+                  value={formData.taxId}
+                  onChange={(e) => setFormData({ ...formData, taxId: e.target.value })}
                 />
               </div>
             </CardContent>
@@ -209,8 +231,8 @@ export default function SettingsPage() {
                   <Label htmlFor="dpoName">DPO Name</Label>
                   <Input
                     id="dpoName"
-                    value={organizationData.dpoName}
-                    onChange={(e) => setOrganizationData({ ...organizationData, dpoName: e.target.value })}
+                    value={formData.dpoName}
+                    onChange={(e) => setFormData({ ...formData, dpoName: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -218,16 +240,16 @@ export default function SettingsPage() {
                   <Input
                     id="dpoEmail"
                     type="email"
-                    value={organizationData.dpoEmail}
-                    onChange={(e) => setOrganizationData({ ...organizationData, dpoEmail: e.target.value })}
+                    value={formData.dpoEmail}
+                    onChange={(e) => setFormData({ ...formData, dpoEmail: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="dpoPhone">DPO Phone</Label>
                   <Input
                     id="dpoPhone"
-                    value={organizationData.dpoPhone}
-                    onChange={(e) => setOrganizationData({ ...organizationData, dpoPhone: e.target.value })}
+                    value={formData.dpoPhone}
+                    onChange={(e) => setFormData({ ...formData, dpoPhone: e.target.value })}
                   />
                 </div>
               </div>

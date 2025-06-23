@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,17 +13,41 @@ import Link from "next/link"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
 
-interface RopaData {
-  id: string
-  name: string
-  department: string
-  purpose: string
-  status: string
-  riskLevel: string
-  lastUpdated: string
-  dataSubjects: string[]
-  lawfulBasis: string
-}
+const mockRopaData = [
+  {
+    id: "RPA-001",
+    name: "Employee Data Management",
+    department: "HR",
+    purpose: "Payroll Processing",
+    status: "Active",
+    riskLevel: "Medium",
+    lastUpdated: "2024-01-10",
+    dataSubjects: ["Employees"],
+    lawfulBasis: "Contract",
+  },
+  {
+    id: "RPA-002",
+    name: "Customer Database",
+    department: "Marketing",
+    purpose: "Customer Relationship Management",
+    status: "Active",
+    riskLevel: "High",
+    lastUpdated: "2024-01-08",
+    dataSubjects: ["Customers"],
+    lawfulBasis: "Consent",
+  },
+  {
+    id: "RPA-003",
+    name: "Visitor Log System",
+    department: "Security",
+    purpose: "Access Control",
+    status: "Inactive",
+    riskLevel: "Low",
+    lastUpdated: "2024-01-05",
+    dataSubjects: ["Visitors"],
+    lawfulBasis: "Legitimate Interest",
+  },
+]
 
 export default function RopaPage() {
   const { user } = useAuth()
@@ -31,30 +55,8 @@ export default function RopaPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [departmentFilter, setDepartmentFilter] = useState("all")
-  const [ropaData, setRopaData] = useState<RopaData[]>([])
-  const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    fetchRopaData()
-  }, [])
-
-  const fetchRopaData = async () => {
-    try {
-      const res = await fetch("/api/ropa")
-      const data = await res.json()
-      if (Array.isArray(data)) {
-        setRopaData(data)
-      } else {
-        console.error("Invalid data format received:", data)
-      }
-    } catch (error) {
-      console.error("Error fetching RoPA data:", error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const filteredData = ropaData.filter((item) => {
+  const filteredData = mockRopaData.filter((item) => {
     const matchesSearch =
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.department.toLowerCase().includes(searchTerm.toLowerCase())
