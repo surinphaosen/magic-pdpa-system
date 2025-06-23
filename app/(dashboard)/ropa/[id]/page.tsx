@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -7,81 +8,35 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Edit, Download, History } from "lucide-react"
 import Link from "next/link"
 
-// Mock data - in real app this would come from API
-const mockRopaDetails = {
-  "RPA-001": {
-    id: "RPA-001",
-    name: "Employee Data Management",
-    department: "HR",
-    purpose: "Payroll Processing and Employee Management",
-    status: "Active",
-    riskLevel: "Medium",
-    lastUpdated: "2024-01-10",
-    createdDate: "2023-12-01",
-    dataSubjects: ["Employees", "Job Applicants"],
-    lawfulBasis: "Contract",
-    dataController: "Magic Software (Thailand) Corp., Ltd.",
-    contactPerson: "Somchai Jaidee",
-    email: "somchai.j@magicsoftware.co.th",
-    phone: "+66 2 123 4567",
-    businessUnit: "Corporate",
-    dataCategories: ["Identity Data", "Contact Data", "Employment Data", "Financial Data"],
-    retentionPeriod: "7 years after employment termination",
-    securityMeasures: "Encryption at rest, Access controls, Regular backups",
-    processors: "Internal HR System, Payroll Service Provider",
-    dataTransfer: "No cross-border transfers",
-    description:
-      "Processing of employee personal data for payroll, benefits administration, performance management, and compliance with labor laws.",
-  },
-  "RPA-002": {
-    id: "RPA-002",
-    name: "Customer Database",
-    department: "Marketing",
-    purpose: "Customer Relationship Management",
-    status: "Active",
-    riskLevel: "High",
-    lastUpdated: "2024-01-08",
-    createdDate: "2023-11-15",
-    dataSubjects: ["Customers", "Prospects"],
-    lawfulBasis: "Consent",
-    dataController: "Magic Software (Thailand) Corp., Ltd.",
-    contactPerson: "Niran Suksan",
-    email: "niran.s@magicsoftware.co.th",
-    phone: "+66 2 123 4568",
-    businessUnit: "Operations",
-    dataCategories: ["Identity Data", "Contact Data", "Financial Data", "Behavioral Data"],
-    retentionPeriod: "5 years after last interaction",
-    securityMeasures: "End-to-end encryption, Multi-factor authentication, Regular security audits",
-    processors: "CRM System, Email Marketing Platform, Analytics Service",
-    dataTransfer: "EU (Adequacy Decision), USA (Standard Contractual Clauses)",
-    description:
-      "Processing of customer data for sales, marketing, customer support, and business analytics to improve products and services.",
-  },
-}
-
 export default function RopaDetailsPage() {
   const params = useParams()
   const router = useRouter()
   const id = params.id as string
 
-  const ropaData = mockRopaDetails[id as keyof typeof mockRopaDetails]
+  const [data, setData] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  if (!ropaData) {
-    return (
-      <div className="flex-1 p-6">
-        <div className="text-center py-12">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">RoPA Record Not Found</h1>
-          <p className="text-gray-600 mb-6">The requested RoPA record could not be found.</p>
-          <Link href="/ropa">
-            <Button>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to RoPA List
-            </Button>
-          </Link>
-        </div>
-      </div>
-    )
-  }
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch(`/api/ropa/${params.id}`)
+        if (!res.ok) throw new Error("Failed to fetch data")
+        const record = await res.json()
+        setData(record)
+      } catch (error) {
+        console.error("Error fetching RoPA details:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    if (params.id) {
+      fetchData()
+    }
+  }, [params.id])
+
+  if (isLoading) return <div>Loading...</div>
+  if (!data) return <div>Record not found</div>
 
   const getRiskBadgeVariant = (risk: string) => {
     switch (risk) {
@@ -112,7 +67,7 @@ export default function RopaDetailsPage() {
           </Link>
           <div className="flex-1">
             <h1 className="text-2xl font-bold">RoPA Record Details</h1>
-            <p className="text-muted-foreground">Record ID: {ropaData.id}</p>
+            <p className="text-muted-foreground">Record ID: {data.id}</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm">
@@ -139,8 +94,8 @@ export default function RopaDetailsPage() {
               <CardTitle className="flex items-center justify-between">
                 Basic Information
                 <div className="flex gap-2">
-                  <Badge variant={getStatusBadgeVariant(ropaData.status)}>{ropaData.status}</Badge>
-                  <Badge variant={getRiskBadgeVariant(ropaData.riskLevel)}>{ropaData.riskLevel} Risk</Badge>
+                  <Badge variant={getStatusBadgeVariant(data.status)}>{data.status}</Badge>
+                  <Badge variant={getRiskBadgeVariant(data.riskLevel)}>{data.riskLevel} Risk</Badge>
                 </div>
               </CardTitle>
             </CardHeader>
@@ -149,37 +104,37 @@ export default function RopaDetailsPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-gray-500">Activity Name</label>
-                    <p className="text-lg font-semibold">{ropaData.name}</p>
+                    <p className="text-lg font-semibold">{data.name}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Department</label>
-                    <p>{ropaData.department}</p>
+                    <p>{data.department}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Business Unit</label>
-                    <p>{ropaData.businessUnit}</p>
+                    <p>{data.businessUnit}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Purpose</label>
-                    <p>{ropaData.purpose}</p>
+                    <p>{data.purpose}</p>
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-gray-500">Data Controller</label>
-                    <p>{ropaData.dataController}</p>
+                    <p>{data.dataController}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Lawful Basis</label>
-                    <p>{ropaData.lawfulBasis}</p>
+                    <p>{data.lawfulBasis}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Created Date</label>
-                    <p>{ropaData.createdDate}</p>
+                    <p>{data.createdDate}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Last Updated</label>
-                    <p>{ropaData.lastUpdated}</p>
+                    <p>{data.lastUpdated}</p>
                   </div>
                 </div>
               </div>
@@ -195,15 +150,15 @@ export default function RopaDetailsPage() {
               <div className="grid grid-cols-3 gap-6">
                 <div>
                   <label className="text-sm font-medium text-gray-500">Contact Person</label>
-                  <p className="font-medium">{ropaData.contactPerson}</p>
+                  <p className="font-medium">{data.contactPerson}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Email</label>
-                  <p>{ropaData.email}</p>
+                  <p>{data.email}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Phone</label>
-                  <p>{ropaData.phone}</p>
+                  <p>{data.phone}</p>
                 </div>
               </div>
             </CardContent>
@@ -217,7 +172,7 @@ export default function RopaDetailsPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {ropaData.dataSubjects.map((subject) => (
+                  {(data.dataSubjects ?? []).map((subject: any) => (
                     <Badge key={subject} variant="outline">
                       {subject}
                     </Badge>
@@ -232,7 +187,7 @@ export default function RopaDetailsPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {ropaData.dataCategories.map((category) => (
+                  {(data.dataCategories ?? []).map((category: any) => (
                     <Badge key={category} variant="outline">
                       {category}
                     </Badge>
@@ -251,26 +206,26 @@ export default function RopaDetailsPage() {
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500">Description</label>
-                  <p className="mt-1">{ropaData.description}</p>
+                  <p className="mt-1">{data.description}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <label className="text-sm font-medium text-gray-500">Processors</label>
-                    <p className="mt-1">{ropaData.processors}</p>
+                    <p className="mt-1">{data.processors}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Data Transfer</label>
-                    <p className="mt-1">{ropaData.dataTransfer}</p>
+                    <p className="mt-1">{data.dataTransfer}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <label className="text-sm font-medium text-gray-500">Retention Period</label>
-                    <p className="mt-1">{ropaData.retentionPeriod}</p>
+                    <p className="mt-1">{data.retentionPeriod}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Security Measures</label>
-                    <p className="mt-1">{ropaData.securityMeasures}</p>
+                    <p className="mt-1">{data.securityMeasures}</p>
                   </div>
                 </div>
               </div>

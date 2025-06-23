@@ -1,0 +1,45 @@
+// Prisma schema for RoPA (Record of Processing Activities)
+// MSSQL connection
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+model RopaRecord {
+  id                Int      @id @default(autoincrement())
+  activityName      String
+  department        String
+  businessUnit      String
+  dataController    String
+  contactPerson     String
+  contactEmail      String
+  contactPhone      String?
+  dpoName           String?
+  dpoEmail          String?
+  dpoPhone          String?
+  dataGroups        String   // Comma-separated
+  customDataTypes   String?
+  relatedAssets     String?  // Comma-separated
+  purposes          String   // Comma-separated
+  customPurpose     String?
+  lawfulBasis       String?
+  retentionPeriod   String
+  retentionCriteria String?
+  disposalMethod    String?
+  accessRights      String?
+  accessConditions  String?
+  accessPersons     String?
+  disclosureExemptions String? // Comma-separated
+  customDisclosure  String?
+  securityMeasures  String? // Comma-separated
+  customSecurity    String?
+  rejectionCases    String?
+  objectionCases    String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}

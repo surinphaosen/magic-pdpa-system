@@ -107,15 +107,34 @@ export default function CreateRopaPage() {
     }
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.activityName || !formData.department || !formData.contactPerson || !formData.contactEmail) {
       toast.error("Please fill in all required fields")
       return
     }
-
-    console.log("Form submitted:", formData)
-    toast.success("RoPA record created successfully!")
-    router.push("/ropa")
+    try {
+      const res = await fetch("/api/ropa/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...formData,
+          dataGroups: formData.dataGroups.join(","),
+          relatedAssets: formData.relatedAssets.join(","),
+          purposes: formData.purposes.join(","),
+          disclosureExemptions: formData.disclosureExemptions.join(","),
+          securityMeasures: formData.securityMeasures.join(","),
+        }),
+      })
+      const result = await res.json()
+      if (result.success) {
+        toast.success("RoPA record created and saved to database!")
+        router.push("/ropa")
+      } else {
+        toast.error(result.error || "Failed to save to database")
+      }
+    } catch (err) {
+      toast.error("Error: " + err)
+    }
   }
 
   const renderStepContent = () => {

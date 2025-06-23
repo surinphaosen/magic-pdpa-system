@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,47 +12,46 @@ import { ArrowLeft, Save, Eye } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 
-// Mock data - in real app this would come from API
-const mockRopaDetails = {
-  "RPA-001": {
-    id: "RPA-001",
-    name: "Employee Data Management",
-    department: "HR",
-    purpose: "Payroll Processing and Employee Management",
-    businessUnit: "Corporate",
-    dataController: "Magic Software (Thailand) Corp., Ltd.",
-    contactPerson: "Somchai Jaidee",
-    email: "somchai.j@magicsoftware.co.th",
-    phone: "+66 2 123 4567",
-    lawfulBasis: "Contract",
-    description:
-      "Processing of employee personal data for payroll, benefits administration, performance management, and compliance with labor laws.",
-  },
-}
-
 export default function EditRopaPage() {
   const params = useParams()
   const router = useRouter()
   const id = params.id as string
 
-  const originalData = mockRopaDetails[id as keyof typeof mockRopaDetails]
-  const [formData, setFormData] = useState(
-    originalData || {
-      id: "",
-      name: "",
-      department: "",
-      purpose: "",
-      businessUnit: "",
-      dataController: "",
-      contactPerson: "",
-      email: "",
-      phone: "",
-      lawfulBasis: "",
-      description: "",
-    },
-  )
+  const [formData, setFormData] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  if (!originalData) {
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch(`/api/ropa/${id}`)
+        if (!res.ok) throw new Error("Failed to fetch data")
+        const data = await res.json()
+        setFormData({
+          id: data.id,
+          name: data.activityName || "",
+          department: data.department || "",
+          purpose: Array.isArray(data.purposes) ? data.purposes.join(", ") : data.purposes || "",
+          businessUnit: data.businessUnit || "",
+          dataController: data.dataController || "",
+          contactPerson: data.contactPerson || "",
+          email: data.contactEmail || "",
+          phone: data.contactPhone || "",
+          lawfulBasis: data.lawfulBasis || "",
+          description: data.description || "",
+        })
+      } catch (err: any) {
+        setError(err.message)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    if (id) fetchData()
+  }, [id])
+
+  if (isLoading) return <div className="p-6">Loading...</div>
+  if (error) return <div className="p-6 text-red-500">{error}</div>
+  if (!formData) {
     return (
       <div className="flex-1 p-6">
         <div className="text-center py-12">
@@ -69,16 +68,24 @@ export default function EditRopaPage() {
     )
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Validate required fields
     if (!formData.name || !formData.department || !formData.contactPerson || !formData.email) {
       toast.error("Please fill in all required fields")
       return
     }
-
-    console.log("Saving RoPA record:", formData)
-    toast.success("RoPA record updated successfully!")
-    router.push(`/ropa/${id}`)
+    try {
+      const res = await fetch(`/api/ropa/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      })
+      if (!res.ok) throw new Error("Failed to update record")
+      toast.success("RoPA record updated successfully!")
+      router.push(`/ropa/${id}`)
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update record")
+    }
   }
 
   return (
