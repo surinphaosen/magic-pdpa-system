@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,36 +21,8 @@ import { Label } from "@/components/ui/label"
 import { Plus, Search, Edit, MoreHorizontal, Users, UserCheck, UserX, Shield } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
-
-const userStats = [
-  { label: "Total Users", value: 2, icon: Users, color: "text-blue-600" },
-  { label: "Active Users", value: 2, icon: UserCheck, color: "text-green-600" },
-  { label: "Administrators", value: 1, icon: Shield, color: "text-purple-600" },
-  { label: "Inactive Users", value: 0, icon: UserX, color: "text-red-600" },
-]
-
-const mockUsers = [
-  {
-    id: "1",
-    username: "admin1",
-    email: "admin@company.com",
-    role: "Admin",
-    department: "IT",
-    status: "Active",
-    lastLogin: "2024-01-15 09:30:00",
-    createdDate: "2024-01-01",
-  },
-  {
-    id: "2",
-    username: "user1",
-    email: "john.doe@company.com",
-    role: "Department User",
-    department: "HR",
-    status: "Active",
-    lastLogin: "2024-01-15 08:45:00",
-    createdDate: "2024-01-02",
-  },
-]
+import { getUsers, updateUser } from "@/services/userService"
+import Link from "next/link"
 
 export default function UserManagementPage() {
   const { user } = useAuth()
@@ -64,6 +36,16 @@ export default function UserManagementPage() {
     department: "",
     password: "",
   })
+  const [users, setUsers] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
+  const [editIdx, setEditIdx] = useState<number | null>(null)
+  const [editFullname, setEditFullname] = useState("")
+  const [editLoading, setEditLoading] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+  const [editSuccess, setEditSuccess] = useState(false)
 
   // Redirect if not admin
   if (user?.role !== "Admin") {
@@ -71,11 +53,42 @@ export default function UserManagementPage() {
     return null
   }
 
-  const filteredUsers = mockUsers.filter(
+  // ใน useEffect: mapping ข้อมูลจาก API
+  useEffect(() => {
+    setLoading(true)
+    setError(null)
+    getUsers()
+      .then((data) => {
+        // Map API fields to UI fields
+        const mapped =
+          Array.isArray(data)
+            ? data.map((u: any) => ({
+                id: u.id ?? u.userId ?? u.Id ?? u.UserId ?? u._id ?? Math.random().toString(),
+                username: u.username ?? u.userName ?? u.Username ?? "",
+                // เพิ่ม fullname และ fullName ใน mapping
+                fullname: u.fullname ?? u.fullName ?? ((u.firstName || u.firstname || "") + (u.lastName || u.lastname ? " " + (u.lastName || u.lastname) : "")),
+                email: u.email ?? u.Email ?? "",
+                role: u.role ?? u.Role ?? "",
+                department: u.department ?? u.Department ?? "",
+                status: u.status ?? u.Status ?? "",
+                lastLogin: u.lastLogin ?? u.LastLogin ?? u.last_login ?? "",
+                createdDate: u.createdDate ?? u.CreatedDate ?? "",
+              }))
+            : []
+        setUsers(mapped)
+        if (!Array.isArray(mapped) || mapped.length === 0) {
+          setError("ไม่สามารถดึงข้อมูลผู้ใช้ได้ หรือไม่มีข้อมูล")
+        }
+      })
+      .catch(() => setError("เกิดข้อผิดพลาดในการเชื่อมต่อ API"))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const filteredUsers = users.filter(
     (user) =>
-      user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.department.toLowerCase().includes(searchTerm.toLowerCase()),
+      user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.department?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   const handleCreateUser = () => {
@@ -91,6 +104,47 @@ export default function UserManagementPage() {
   const getRoleBadgeVariant = (role: string) => {
     return role === "Admin" ? "destructive" : "outline"
   }
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredUsers.length / pageSize)
+  const pagedUsers = filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+  // ดึงชื่อ field ทั้งหมดจาก object แรกใน users (ถ้ามี) และลบ field ที่ไม่ต้องการ
+  let userFields = users.length > 0
+    ? Object.keys(users[0]).filter(
+        (f) =>
+          f !== "department" &&
+          f !== "status" &&
+          f.toLowerCase() !== "lastlogin" &&
+          f.toLowerCase() !== "fullname" && // ลบ fullname เดิมออกจาก fields
+          f.toLowerCase() !== "fullName"
+      )
+    : []
+
+  // แทรก Fullname หลัง username (แค่ 1 column)
+  const fullnameCol = "Fullname"
+  const usernameIdx = userFields.indexOf("username")
+  if (usernameIdx !== -1) {
+    userFields = [
+      ...userFields.slice(0, usernameIdx + 1),
+      fullnameCol,
+      ...userFields.slice(usernameIdx + 1),
+    ]
+  } else {
+    userFields = [fullnameCol, ...userFields]
+  }
+
+  // Update userStats to show real total users and administrators
+  const totalUsers = users.length
+  const totalAdmins = users.filter(
+    u => (u.role ?? u.Role ?? "").toLowerCase() === "admin" || (u.role ?? u.Role ?? "").toLowerCase() === "administrator"
+  ).length
+  const userStats = [
+    { label: "Total Users", value: totalUsers, icon: Users, color: "text-blue-600" },
+    { label: "Active Users", value: 2, icon: UserCheck, color: "text-green-600" },
+    { label: "Administrators", value: totalAdmins, icon: Shield, color: "text-purple-600" },
+    { label: "Inactive Users", value: 0, icon: UserX, color: "text-red-600" },
+  ]
 
   return (
     <div className="flex-1 space-y-6 p-6">
@@ -227,55 +281,154 @@ export default function UserManagementPage() {
           <CardDescription>Manage system users and their permissions</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last Login</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{user.username}</div>
-                      <div className="text-sm text-muted-foreground">{user.email}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getRoleBadgeVariant(user.role)}>{user.role}</Badge>
-                  </TableCell>
-                  <TableCell>{user.department}</TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusBadgeVariant(user.status)}>{user.status}</Badge>
-                  </TableCell>
-                  <TableCell>{user.lastLogin}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit User
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>Reset Password</DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600">Deactivate User</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {loading ? (
+            <div>Loading...</div>
+          ) : error ? (
+            <div className="text-red-500">{error}</div>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {userFields.map((field) => (
+                      <TableHead key={field}>{field}</TableHead>
+                    ))}
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pagedUsers.map((user, idx) => {
+                    const globalIdx = (currentPage - 1) * pageSize + idx
+                    const isEditing = editIdx === globalIdx
+                    return (
+                      <TableRow key={user.id || idx}>
+                        {userFields.map((field) => (
+                          <TableCell key={field}>
+                            {field === "Fullname" ? (
+                              isEditing ? (
+                                <Input
+                                  value={editFullname}
+                                  onChange={e => setEditFullname(e.target.value)}
+                                  disabled={editLoading}
+                                  className="w-40"
+                                />
+                              ) : (
+                                // แสดง fullname เดียว
+                                user.fullname ||
+                                user.fullName ||
+                                [
+                                  user.firstName || user.firstname || "",
+                                  user.lastName || user.lastname || ""
+                                ].filter(Boolean).join(" ") ||
+                                "-"
+                              )
+                            ) : (
+                              typeof user[field] === "object" && user[field] !== null
+                                ? JSON.stringify(user[field])
+                                : String(user[field] ?? "")
+                            )}
+                          </TableCell>
+                        ))}
+                        <TableCell>
+                          {isEditing ? (
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={editLoading}
+                                onClick={async () => {
+                                  setEditLoading(true)
+                                  setEditError(null)
+                                  setEditSuccess(false)
+                                  const result = await updateUser({
+                                    username: user.username,
+                                    fullName: editFullname,
+                                    email: user.email,
+                                    role: user.role,
+                                    password: "",
+                                  })
+                                  setEditLoading(false)
+                                  if (result.success) {
+                                    // อัปเดต state users
+                                    setUsers(prev =>
+                                      prev.map((u, i) =>
+                                        i === globalIdx ? { ...u, fullname: editFullname } : u
+                                      )
+                                    )
+                                    setEditIdx(null)
+                                    setEditSuccess(true)
+                                    setTimeout(() => setEditSuccess(false), 1200)
+                                  } else {
+                                    setEditError("Update failed")
+                                  }
+                                }}
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={editLoading}
+                                onClick={() => {
+                                  setEditIdx(null)
+                                  setEditError(null)
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditIdx(globalIdx)
+                                setEditFullname(user.fullname || "")
+                                setEditError(null)
+                              }}
+                            >
+                              <Edit className="w-4 h-4 mr-1 inline" />
+                              Edit
+                            </Button>
+                          )}
+                          {isEditing && editError && (
+                            <div className="text-red-500 text-xs mt-1">{editError}</div>
+                          )}
+                          {isEditing && editSuccess && (
+                            <div className="text-green-600 text-xs mt-1">Update Success</div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+              {/* Pagination Controls */}
+              <div className="flex justify-between items-center mt-4">
+                <span>
+                  Page {currentPage} of {totalPages}
+                </span>
+                <div className="space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>
